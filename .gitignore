@@ -131,3 +131,4 @@ dmypy.json
 .vscode/
 *.txt
 vit_uncompleted/
+.github/
