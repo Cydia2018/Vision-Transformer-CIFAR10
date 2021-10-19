@@ -43,6 +43,9 @@ class Attention(nn.Module):
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias = False)
 
         self.reattn_weights = nn.Parameter(torch.randn(heads, heads))
+        self.reatten_matrix = nn.Conv2d(heads,heads, 1, 1)
+        self.var_norm = nn.BatchNorm2d(heads)
+        self.reatten_scale = 1.0
 
         self.reattn_norm = nn.Sequential(
             Rearrange('b h i j -> b i j h'),
@@ -67,8 +70,9 @@ class Attention(nn.Module):
 
         # re-attention
 
-        attn = einsum('b h i j, h g -> b g i j', attn, self.reattn_weights)
-        attn = self.reattn_norm(attn)
+        # attn = einsum('b h i j, h g -> b g i j', attn, self.reattn_weights)
+        # attn = self.reattn_norm(attn)
+        attn = self.var_norm(self.reatten_matrix(attn)) * self.reatten_scale
 
         # aggregate and out
 

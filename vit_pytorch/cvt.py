@@ -22,7 +22,7 @@ def group_by_key_prefix_and_remove_prefix(prefix, d):
 
 # classes
 
-class LayerNorm(nn.Module): # layernorm, but done in the channel dimension #1
+class LayerNorm(nn.Module): # layernorm, but done in the channel dimension #input of this layernorm is (B,C,H,W), so dim=1
     def __init__(self, dim, eps = 1e-5):
         super().__init__()
         self.eps = eps

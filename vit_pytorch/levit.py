@@ -74,7 +74,7 @@ class Attention(nn.Module):
         k_pos = torch.stack(torch.meshgrid(k_range, k_range), dim = -1)
 
         q_pos, k_pos = map(lambda t: rearrange(t, 'i j c -> (i j) c'), (q_pos, k_pos))
-        rel_pos = (q_pos[:, None, ...] - k_pos[None, :, ...]).abs()
+        rel_pos = (q_pos[:, None, ...] - k_pos[None, :, ...]).abs()     # 编码了所有attn map上的点相对其他点的位置变化，取绝对值
 
         x_rel, y_rel = rel_pos.unbind(dim = -1)
         pos_indices = (x_rel * fmap_size) + y_rel
@@ -150,12 +150,12 @@ class LeViT(nn.Module):
 
         self.conv_embedding = nn.Sequential(
             nn.Conv2d(3, 32, 3, stride = 2, padding = 1),
-            nn.Conv2d(32, 64, 3, stride = 2, padding = 1),
+            nn.Conv2d(32, 64, 3, stride = 1, padding = 1),
             nn.Conv2d(64, 128, 3, stride = 2, padding = 1),
-            nn.Conv2d(128, dims[0], 3, stride = 2, padding = 1)
+            nn.Conv2d(128, dims[0], 3, stride = 1, padding = 1)
         )
 
-        fmap_size = image_size // (2 ** 4)
+        fmap_size = image_size // (2 ** 2)
         layers = []
 
         for ind, dim, depth, heads in zip(range(stages), dims, depths, layer_heads):
@@ -164,7 +164,7 @@ class LeViT(nn.Module):
 
             if not is_last:
                 next_dim = dims[ind + 1]
-                layers.append(Transformer(dim, fmap_size, 1, heads * 2, dim_key, dim_value, dim_out = next_dim, downsample = True))
+                layers.append(Transformer(dim, fmap_size, 1, heads * 2, dim_key, dim_value*2, dim_out = next_dim, downsample = True))
                 fmap_size = ceil(fmap_size / 2)
 
         self.backbone = nn.Sequential(*layers)
@@ -191,3 +191,18 @@ class LeViT(nn.Module):
             return out, distill
 
         return out
+
+if __name__ == '__main__':
+    levit = LeViT(
+        image_size = 32,
+        num_classes = 10,
+        stages = 3,             # number of stages
+        dim = (128, 192, 256),  # dimensions at each stage
+        depth = 4,              # transformer of depth 4 at each stage
+        heads = (4, 6, 8),      # heads at each stage
+        mlp_mult = 2,
+        dropout = 0.1
+    )
+    img = torch.randn(1, 3, 32, 32)
+    y = levit(img) # (1, 1000)
+    print(y.size())
